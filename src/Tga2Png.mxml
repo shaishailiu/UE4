@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+<fx:Script>
+	<![CDATA[
+		import Utils.TGADecoder;
+		
+		import mx.graphics.codec.PNGEncoder;
+		private function selFile():void{
+			var file:File = new File();
+			file.addEventListener(Event.SELECT,onFileDirectorySel);
+			//file.browseForOpen("打开");
+			file.browseForDirectory("打开");
+		}
+		
+		
+		protected function onFileDirectorySel(event:Event):void
+		{
+			var file:File = event.target as File;
+			var ary:Array = file.getDirectoryListing();
+			for(var i:int;i<ary.length;i++){
+				var fname:String = File(ary[i]).extension;
+				trace(fname);
+				fname = fname.toLocaleLowerCase();
+				if(fname =="tga"){
+					
+					var byte:ByteArray = new ByteArray;
+					
+					var fs:FileStream = new FileStream();
+					fs.open(File(ary[i]),FileMode.READ);
+					fs.readBytes(byte);
+					fs.close();
+					
+					var tga:TGADecoder = new TGADecoder(byte);
+					var bitmap:Bitmap = new Bitmap(tga.bitmap);
+					//ui.addChild(bitmap);
+					//return;
+					var png:PNGEncoder = new PNGEncoder();
+					var pngByte:ByteArray = png.encode(tga.bitmap);
+					
+					var pngUrl:String = File(ary[i]).url.replace("TGA","png");
+					pngUrl = pngUrl.replace("tga","png");
+					
+					var pngFile:File = new File(pngUrl);
+					fs.open(pngFile,FileMode.WRITE);
+					fs.writeBytes(pngByte,0,pngByte.length);
+					fs.close();
+				}
+				
+				
+				
+				
+			}
+			
+		}
+	]]>
+</fx:Script>
+<mx:UIComponent  id="ui" x="100" y="100"/>
+<s:Button x="10" y="21" label="TGA" click="selFile()"/>
+</s:WindowedApplication>

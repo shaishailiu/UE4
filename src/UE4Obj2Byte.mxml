@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+<fx:Script>
+	<![CDATA[
+		import _Pan3D.base.ObjData;
+		import _Pan3D.display3D.analysis.ObjAnalysis;
+		private function selFile():void{
+			var file:File = new File();
+			file.addEventListener(Event.SELECT,onFileDirectorySel);
+			//file.browseForOpen("打开");
+			file.browseForDirectory("打开");
+		}
+		
+		
+		protected function onFileDirectorySel(event:Event):void
+		{
+			var file:File = event.target as File;
+			var ary:Array = file.getDirectoryListing();
+			for(var i:int;i<ary.length;i++){
+				var fname:String = File(ary[i]).name;
+				fname = fname.split(".")[0];
+				if(fname.indexOf("Internal") != -1 ||  fname.indexOf("UV") != -1){
+					
+				}else{
+					var file1:File = new File(file.url + "/" + fname + "_Internal.OBJ");
+					var file2:File = new File(file.url + "/" + fname + "_UV1.OBJ");
+					var newName:String = new String(file.url + "/" + fname + ".OBJS");
+					onFileSel(file1,file2,newName);
+				}
+			}
+			
+		}
+		
+		protected function onFileSel(file:File,uvFile:File,newName:String):void
+		{
+			var fs:FileStream = new FileStream();
+			fs.open(file,FileMode.READ);
+			var str:String = fs.readUTFBytes(fs.bytesAvailable);
+			fs.close();
+			var objAnalysis:ObjAnalysis = new ObjAnalysis();
+			var objData:ObjData = objAnalysis.analysis(str);
+			
+			fs.open(uvFile,FileMode.READ);
+			var str2:String = fs.readUTFBytes(fs.bytesAvailable);
+			fs.close();
+			objAnalysis = new ObjAnalysis();
+			var objData2:ObjData = objAnalysis.analysis(str2);
+			
+			trace(objData.vertices.length/3,objData.normals.length/3,objData.uvs.length/2,objData2.uvs.length/2);
+			
+			var byte:ByteArray = new ByteArray();
+			byte.endian = Endian.LITTLE_ENDIAN;
+			
+			byte.writeInt(objData.vertices.length);
+			for(var i:int=0;i<objData.vertices.length;i++){
+				byte.writeFloat(objData.vertices[i]);
+			}
+			
+			
+			
+			byte.writeInt(objData.normals.length);
+			for(i=0;i<objData.normals.length;i++){
+				byte.writeFloat(objData.normals[i]);
+			}
+			
+			byte.writeInt(objData.uvs.length);
+			for(i=0;i<objData.uvs.length;i++){
+				if(i%2 == 1){
+					byte.writeFloat(1-objData.uvs[i]);
+				}else{
+					byte.writeFloat(objData.uvs[i]);
+				}
+				
+			}
+			
+			byte.writeInt(objData2.uvs.length);
+			for(i=0;i<objData2.uvs.length;i++){
+				if(i%2 == 1){
+					byte.writeFloat(1-objData2.uvs[i]);
+				}else{
+					byte.writeFloat(objData2.uvs[i]);
+				}
+			}
+			
+			byte.writeInt(objData.indexs.length);
+			for(i=0;i<objData.indexs.length;i++){
+				byte.writeInt(objData.indexs[i]);
+			}
+			
+			var newFile:File = new File(newName);
+			fs.open(newFile,FileMode.WRITE);
+			fs.writeBytes(byte,0,byte.length);
+			fs.close();
+			
+			
+			
+		}
+/**Map相关******************************************************************/
+		private function readMap():void{
+			var file:File = new File();
+			file.addEventListener(Event.SELECT,onMapSel);
+			file.browseForOpen("打开");
+		}
+		
+		
+		protected function onMapSel(event:Event):void
+		{
+			var file:File = event.target as File;
+			var fs:FileStream = new FileStream();
+			fs.open(file,FileMode.READ);
+			var str:String = fs.readUTFBytes(fs.bytesAvailable);
+			fs.close();
+			
+			
+			var lineAry:Array = str.split("\r\n");
+			
+			var byte:ByteArray = new ByteArray;
+			byte.endian = Endian.LITTLE_ENDIAN;
+			
+			byte.writeInt(lineAry.length-1);
+			
+			for(var i:int;i<lineAry.length;i++){
+				var lineStr:String = lineAry[i];
+				if(lineStr == ""){
+					continue;
+				}
+				
+				var lineItemAry:Array = lineStr.split("@");
+				for(var k:int=0;k<lineItemAry.length;k++){
+					lineItemAry[k] = String(lineItemAry[k]).replace("/Game/","");
+				}
+				
+				var objStr:String = lineItemAry[0];
+				objStr = objStr.split(".")[0] + ".OBJS";
+				
+				var textStr:String = lineItemAry[1];
+				textStr = textStr.split(".")[0] + ".png";
+				
+				var normalStr:String = lineItemAry[2];
+				normalStr = normalStr.split(".")[0] + ".png";
+				
+				var numStr:String = lineItemAry[3];
+				var numAry:Array = numStr.split(",");
+				
+				
+				byte.writeUTF(objStr);
+				byte.writeUTF(textStr);
+				byte.writeUTF(normalStr);
+				
+				for(var j:int=0;j<numAry.length;j++){
+					byte.writeFloat(Number(numAry[j]));
+				}
+			}
+			
+			var fname:String = file.name;
+			fname = fname.split(".")[0];
+			var url:String = file.parent.url + "/" + fname + ".lmap";
+			
+			
+			var newFile:File = new File(url);
+			fs.open(newFile,FileMode.WRITE);
+			fs.writeBytes(byte,0,byte.length);
+			fs.close();
+			
+		}
+
+		
+	]]>
+</fx:Script>
+	<s:Button x="36" y="30" label="选择OBJ" click="selFile()"/>
+	<s:Button x="125" y="29" label="MAP" click="readMap()"/>
+</s:WindowedApplication>
