@@ -24,7 +24,7 @@
 		
 		protected function onConnect(event:ServerSocketConnectEvent):void
 		{
-			if(socket != null){
+			if(socket != null && socket.connected){
 				socket.close();
 			}
 			socket = event.socket;
@@ -33,6 +33,7 @@
 			socket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
 			//socket.writeUTF("服务器消息:你已连接到服务器") 
 			//socket.flush();
+			trace("socet已连接");
 		}
 		
 		
@@ -108,6 +109,12 @@
 			
 		}
 		
+		private function sendLab():void
+		{
+			sendmsg("Hello World!");
+		}
+		
 	]]>
 </fx:Script>
+<s:Button label="send" click="sendLab()"/>
 </s:WindowedApplication>
