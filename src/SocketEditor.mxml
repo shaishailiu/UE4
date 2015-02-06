@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="initSocket()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+<fx:Script>
+	<![CDATA[
+		private var socketServer:ServerSocket;
+		private var socket:Socket;
+		private var clientList:Array=[];
+		
+		private var dic:Dictionary = new Dictionary();
+		private var bufferByteArray:ByteArray = new ByteArray();//接受数据的缓冲区
+		private static var BUFFER_MAX_LENGTH:int=100000;//缓冲区最大长度
+		
+		private function initSocket():void{
+			socketServer = new ServerSocket();
+			socketServer.addEventListener(ServerSocketConnectEvent.CONNECT, onConnect);
+			socketServer.bind(6469,"127.0.0.1");
+			socketServer.listen();
+		}
+		
+		protected function onConnect(event:ServerSocketConnectEvent):void
+		{
+			if(socket != null && socket.connected){
+				socket.close();
+			}
+			socket = event.socket;
+			bufferByteArray = new ByteArray;
+			socket.addEventListener(Event.CLOSE,onClose);
+			socket.addEventListener(ProgressEvent.SOCKET_DATA,onSocketData);
+			//socket.writeUTF("服务器消息:你已连接到服务器") 
+			//socket.flush();
+			trace("socet已连接");
+		}
+		
+		
+		
+		protected function onSocketData(event:ProgressEvent):void
+		{
+			//将数据写入缓冲区
+			socket.readBytes(bufferByteArray, bufferByteArray.length, socket.bytesAvailable);
+			//清除掉读过的数据，防止bufferByteArray过长
+			if(bufferByteArray.length > BUFFER_MAX_LENGTH) 
+			{
+				var tempBA:ByteArray = new ByteArray();
+				//bufferByteArray 的 position 决定了 bytesAvailable 肯定是未读取的数据的长度  ---nick
+				bufferByteArray.readBytes(tempBA, 0, bufferByteArray.bytesAvailable);
+				bufferByteArray.position = 0;
+				bufferByteArray.length = 0;
+				tempBA.readBytes(bufferByteArray, 0, tempBA.bytesAvailable);
+			}
+			//读取缓冲区数据
+			readSocketData();
+			
+		}
+		
+		private function readSocketData():void 
+		{
+			var bufferPosition:int;//记录当前缓冲区的指针
+			var msgHeadMark:int;//取出消息头标识
+			var msgLen:int;//得到该数据包的包体长度
+			
+			while(bufferByteArray.bytesAvailable>4) //这里如果网速过慢，会不会等待超过15毫秒？？  不会的！
+			{
+				bufferPosition = bufferByteArray.position
+				
+				msgLen = bufferByteArray.readShort();
+				if(msgLen > bufferByteArray.bytesAvailable) {//长度不够，等待缓冲区下一次读取
+					bufferByteArray.position = bufferPosition;//还原指针
+					return;
+				} 
+				else 
+				{
+					var dataBuf:ByteArray = new ByteArray();
+					//根据数据流中存储的包长度 减去文件头2和长度数据自身2,剩下的就是包的主体长度  ---nick
+					bufferByteArray.readBytes(dataBuf, 0, msgLen);
+					
+					dataBuf.position = 0;
+					//trace(dataBuf.readUTF());
+					sendmsg("-----" + dataBuf.readUTF() + "-----");
+				}
+				
+				
+			}
+		}
+		
+		private function sendmsg(str:String):void{
+			var byte:ByteArray = new ByteArray();
+			byte.writeUTF(str);
+			
+			sendByte(byte);
+		}
+		
+		private function sendByte(byte:ByteArray):void{
+			var msgByte:ByteArray = new ByteArray;
+			msgByte.writeShort(byte.length);
+			msgByte.writeBytes(byte,0,byte.length);
+			
+			socket.writeBytes(msgByte,0,msgByte.length);
+			socket.flush();
+		}
+		
+		protected function onClose(event:Event):void
+		{
+			// TODO Auto-generated method stub
+			
+		}
+		
+		private function sendLab():void
+		{
+			sendmsg("Hello World!");
+		}
+		
+	]]>
+</fx:Script>
+<s:Button label="send" click="sendLab()"/>
+</s:WindowedApplication>
