@@ -89,6 +89,7 @@
 		
 		private function sendmsg(str:String):void{
 			var byte:ByteArray = new ByteArray();
+			byte.endian = Endian.LITTLE_ENDIAN;
 			byte.writeUTF(str);
 			
 			sendByte(byte);
@@ -96,11 +97,15 @@
 		
 		private function sendByte(byte:ByteArray):void{
 			var msgByte:ByteArray = new ByteArray;
+			msgByte.endian = Endian.LITTLE_ENDIAN;
 			msgByte.writeShort(byte.length);
 			msgByte.writeBytes(byte,0,byte.length);
 			
-			socket.writeBytes(msgByte,0,msgByte.length);
-			socket.flush();
+			if(socket && socket.connected){
+				socket.writeBytes(msgByte,0,msgByte.length);
+				socket.flush();
+			}
+			
 		}
 		
 		protected function onClose(event:Event):void
@@ -111,10 +116,16 @@
 		
 		private function sendLab():void
 		{
-			sendmsg("Hello World!");
+			sendmsg(txt.text);
+			txt.text = "";
 		}
 		
 	]]>
 </fx:Script>
-<s:Button label="send" click="sendLab()"/>
+	<s:TextInput id="txt" width="200" x="20" y="50"/>
+	<s:Button label="发送" x="250" y="50" click="sendLab()"/>
+	<s:TextInput x="20" y="102" width="94"/>
+	<s:Button x="122" y="102" label="环境光亮度"/>
+	<mx:ColorPicker x="24" y="131"/>
+	<s:Button x="122" y="131" label="环境光颜色"/>
 </s:WindowedApplication>
