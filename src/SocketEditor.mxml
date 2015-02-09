@@ -127,5 +127,5 @@
 	<s:TextInput x="20" y="102" width="94"/>
 	<s:Button x="122" y="102" label="环境光亮度"/>
 	<mx:ColorPicker x="24" y="131"/>
-	<s:Button x="122" y="131" label="环境光颜色"/>
+	<s:Button x="122" y="131" label="环境光颜色" color="0xff0000"/>
 </s:WindowedApplication>
